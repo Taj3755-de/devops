@@ -1,14 +1,14 @@
 pipeline {
-    agent { label 'kubernetes master' }
+    agent any
     stages {
-        stage('Checkout') {
+        stage('Clone') {
             steps {
-                git branch: 'main', url: 'https://github.com/Taj3755-de/devops.git'
+                git credentialsId: '760d0481-7f5e-496a-9897-917493bc39f8', url: 'git@github.com:/Taj3755-de/devops.git'
             }
         }
-        stage('Deploy') {
+        stage('Build') {
             steps {
-                sh 'kubectl apply -f deployment.yaml'
+                echo 'Building...'
             }
         }
     }
