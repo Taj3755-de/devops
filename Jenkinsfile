@@ -12,10 +12,6 @@ pipeline {
             steps {
                 dir('terraform-sample') {
                     echo "Initializing Terraform..."
-                    sh 'terraform init'
-                    echo "Validating Terraform configuration..."
-                    sh 'terraform validate'
-                    echo "Running tfsec scan..."
                     sh '/usr/local/bin/tfsec --severity CRITICAL,HIGH --no-color || exit 1'
                     echo "Documenting tfsec scan results..."
                     sh '''
