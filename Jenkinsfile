@@ -2,53 +2,63 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'devops-app'
+        APP_NAME = 'devops-appss'
+        REGISTRY = '192.168.31.14:5000' // Jenkins-hosted Docker registry
+        IMAGE = "${REGISTRY}/${APP_NAME}:latest"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Use the credentials you have in Jenkins
                 git branch: 'main', url: 'https://github.com/Taj3755-de/devops.git', credentialsId: 'kube-jenkins'
             }
         }
 
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
-                sh '''
-                echo "Building ssad image..."
-                docker build -t ${APP_NAME}:latest .
-                '''
+                sh """
+                echo "Building Docker image..."
+                docker build -t ${IMAGE} .
+                """
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                sh """
+                echo "Pushing image to registry..."
+                docker push ${IMAGE}
+                """
             }
         }
 
         stage('Test') {
             steps {
-                sh '''
+                sh """
                 echo "Running tests..."
                 # Example: pytest tests/ or npm test
-                '''
+                """
             }
         }
 
-        stage('Deploy') {
+        stage('Check Kubernetes Nodes') {
             steps {
-                sh '''
-                echo "Deploying container..."
-                docker stop ${APP_NAME} || true
-                docker rm ${APP_NAME} || true
-                docker run -d --name ${APP_NAME} -p 8081:80 ${APP_NAME}:latest
-                '''
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                    echo "Listing Kubernetes nodes..."
+                    kubectl get nodes
+                    """
+                }
             }
         }
-    }
+    } // end of stages
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo '✅ Pipeline completed successfully!'
         }
         failure {
-            echo '❌ Build failed!'
+            echo '❌ Pipeline failed. Check logs!'
         }
     }
 }
