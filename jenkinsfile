@@ -9,7 +9,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Use the credentials you have in Jenkins
-                git branch: 'main', url: 'https://github.com/Taj3755-de/devops.git', credentialsId: '760d0481-7f5e-496a-9897-917493bc39f8'
+                git branch: 'main', url: 'https://github.com/Taj3755-de/devops.git', credentialsId: 'kube-jenkins'
             }
         }
 
