@@ -16,7 +16,7 @@ pipeline {
         stage('Build') {
             steps {
                 sh '''
-                echo "Building Docker image..."
+                echo "Building ssad image..."
                 docker build -t ${APP_NAME}:latest .
                 '''
             }
