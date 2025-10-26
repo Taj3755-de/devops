@@ -1,0 +1,54 @@
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME = 'devops-app'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Use the credentials you have in Jenkins
+                git branch: 'main', url: 'https://github.com/Taj3755-de/devops.git', credentialsId: 'kube-jenkins'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh '''
+                echo "Building ssad image..."
+                docker build -t ${APP_NAME}:latest .
+                '''
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh '''
+                echo "Running tests..."
+                # Example: pytest tests/ or npm test
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                echo "Deploying container..."
+                docker stop ${APP_NAME} || true
+                docker rm ${APP_NAME} || true
+                docker run -d --name ${APP_NAME} -p 8081:80 ${APP_NAME}:latest
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Deployment successful!'
+        }
+        failure {
+            echo '❌ Build failed!'
+        }
+    }
+}
