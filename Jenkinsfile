@@ -49,7 +49,19 @@ pipeline {
             }
         }
 
-
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                    kubectl apply -f k8s-deployment.yaml
+                    kubectl apply -f k8s-service.yaml
+                    kubectl rollout status deployment/${APP_NAME}
+                    kubectl get pods
+                    """
+                }
+            }
+        }
+    }
 
     post {
         success {
