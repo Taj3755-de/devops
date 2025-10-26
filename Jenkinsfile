@@ -1,16 +1,16 @@
 stage('Terraform Security Check') {
     steps {
-        dir('terraform-sample') {  // Replace with your Terraform folder
+        dir('terraform-sample') {
             echo "Initializing Terraform..."
             sh 'terraform init'
 
             echo "Validating Terraform configuration..."
             sh 'terraform validate'
 
-            echo "Running tfsec security scan..."
+            echo "Running tfsec scan..."
             sh '/usr/local/bin/tfsec --severity CRITICAL,HIGH --no-color || exit 1'
 
-            echo "Documenting Terraform security scan results..."
+            echo "Documenting tfsec scan results..."
             sh '''
             mkdir -p security-docs
             echo "tfsec scan executed on $(date)" > security-docs/terraform-security-report.txt
