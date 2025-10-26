@@ -42,6 +42,9 @@ pipeline {
             }
         }
     }
+  withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+    sh 'kubectl get pods'
+}
 
     post {
         success {
