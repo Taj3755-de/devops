@@ -8,19 +8,48 @@ pipeline {
             }
         }
 
-        stage('Terraform Security Check') {
-            steps {
-                dir('terraform-sample') {
-                    echo "Initializing Terraform..."
-                    sh '/usr/local/bin/tfsec --severity CRITICAL,HIGH --no-color || exit 1'
-                    echo "Documenting tfsec scan results..."
-                    sh '''
-                    mkdir -p security-docs
-                    echo "tfsec scan executed on $(date)" > security-docs/terraform-security-report.txt
-                    /usr/local/bin/tfsec --format json >> security-docs/terraform-security-report.txt || true
-                    '''
-                }
-            }
+stage('Terraform Security Check') {
+    steps {
+        dir('terraform-sample') {
+            echo "Initializing Terraform..."
+            sh 'terraform init'
+
+            echo "Validating Terraform configuration..."
+            sh 'terraform validate'
+
+            echo "Running tfsec scan..."
+            sh '''
+            /usr/local/bin/tfsec --format json --out tfsec-report.json || true
+
+            # Count high and critical issues
+            HIGH_COUNT=$(jq '[.results[] | select(.severity=="HIGH" or .severity=="CRITICAL")] | length' tfsec-report.json)
+            MEDIUM_COUNT=$(jq '[.results[] | select(.severity=="MEDIUM")] | length' tfsec-report.json)
+            LOW_COUNT=$(jq '[.results[] | select(.severity=="LOW")] | length' tfsec-report.json)
+
+            echo "High/Critical issues: $HIGH_COUNT"
+            echo "Medium issues: $MEDIUM_COUNT"
+            echo "Low issues: $LOW_COUNT"
+
+            # Fail pipeline if high/critical issues exist
+            if [ "$HIGH_COUNT" -gt 0 ]; then
+                echo "❌ HIGH or CRITICAL tfsec issues found!"
+                cat tfsec-report.json | jq '.results[] | select(.severity=="HIGH" or .severity=="CRITICAL")'
+                exit 1
+            fi
+
+            # Optional: log medium/low for documentation
+            if [ "$MEDIUM_COUNT" -gt 0 ]; then
+                echo "⚠️ Medium tfsec issues (can be reviewed for future fixes):"
+                cat tfsec-report.json | jq '.results[] | select(.severity=="MEDIUM")'
+            fi
+
+            if [ "$LOW_COUNT" -gt 0 ]; then
+                echo "ℹ️ Low tfsec issues (informational):"
+                cat tfsec-report.json | jq '.results[] | select(.severity=="LOW")'
+            fi
+            '''
         }
+    }
+}
     }
 }
