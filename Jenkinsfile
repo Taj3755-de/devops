@@ -11,12 +11,6 @@ pipeline {
 stage('Terraform Security Check') {
     steps {
         dir('terraform-sample') {
-            echo "Initializing Terraform..."
-            sh 'terraform init'
-
-            echo "Validating Terraform configuration..."
-            sh 'terraform validate'
-
             echo "Running tfsec scan..."
             sh '''
             /usr/local/bin/tfsec --format json --out tfsec-report.json || true
