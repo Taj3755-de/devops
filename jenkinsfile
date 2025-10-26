@@ -10,7 +10,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Git checkout with credentials
                 git branch: 'main', url: 'https://github.com/Taj3755-de/devops.git', credentialsId: 'kube-jenkins'
             }
         }
@@ -42,25 +41,24 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Check Kubernetes Nodes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh """
-                    echo "Deploying to Kubernetes..."
+                    echo "Listing Kubernetes nodes..."
                     kubectl get nodes
                     """
                 }
             }
         }
-    }
+    } // end of stages
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo '✅ Pipeline completed successfully!'
         }
         failure {
-            echo '❌ Pipeline failed. Check logs.'
+            echo '❌ Pipeline failed. Check logs!'
         }
     }
 }
-
