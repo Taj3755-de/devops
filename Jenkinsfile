@@ -8,7 +8,7 @@ pipeline {
             }
         }
 
-stage('Terraform Security Check') {
+stage('Terraform  Check') {
     steps {
         dir('terraform-sample') {
             echo "Running tfsec scan..."
