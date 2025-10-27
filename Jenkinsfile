@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        APP_NAME = 'devops-appss'
+        REGISTRY = '192.168.31.14:5000'
+        IMAGE = "${REGISTRY}/${APP_NAME}:latest"
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -8,42 +14,79 @@ pipeline {
             }
         }
 
-stage('Terraform  Check') {
-    steps {
-        dir('terraform-sample') {
-            echo "Running tfsec scan..."
-            sh '''
-            /usr/local/bin/tfsec --format json --out tfsec-report.json || true
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                echo "Building Docker image..."
+                docker build -t ${IMAGE} .
+                """
+            }
+        }
 
-            # Count high and critical issues
-            HIGH_COUNT=$(jq '[.results[] | select(.severity=="HIGH" or .severity=="CRITICAL")] | length' tfsec-report.json)
-            MEDIUM_COUNT=$(jq '[.results[] | select(.severity=="MEDIUM")] | length' tfsec-report.json)
-            LOW_COUNT=$(jq '[.results[] | select(.severity=="LOW")] | length' tfsec-report.json)
+        stage('Scan Docker Image with Trivy') {
+            steps {
+                sh """
+                echo "Scanning Docker image with Trivy..."
+                trivy image --severity HIGH,CRITICAL --exit-code 1 ${IMAGE}
+                """
+            }
+        }
 
-            echo "High/Critical issues: $HIGH_COUNT"
-            echo "Medium issues: $MEDIUM_COUNT"
-            echo "Low issues: $LOW_COUNT"
+        stage('Push Docker Image') {
+            steps {
+                sh """
+                echo "Pushing image to registry..."
+                docker push ${IMAGE}
+                """
+            }
+        }
 
-            # Fail pipeline if high/critical issues exist
-            if [ "$HIGH_COUNT" -gt 110 ]; then
-                echo "HIGH or CRITICAL tfsec issues found!"
-                cat tfsec-report.json | jq '.results[] | select(.severity=="HIGH" or .severity=="CRITICAL")'
-                exit 1
-            fi
+        stage('Check Kubernetes Nodes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh "kubectl get nodes"
+                }
+            }
+        }
 
-            # Optional: log medium/low for documentation
-            if [ "$MEDIUM_COUNT" -gt 0 ]; then
-                echo "Medium tfsec issues (can be reviewed for future fixes):"
-                cat tfsec-report.json | jq '.results[] | select(.severity=="MEDIUM")'
-            fi
-
-            if [ "$LOW_COUNT" -gt 0 ]; then
-                echo "Low tfsec issues (informational):"
-                cat tfsec-report.json | jq '.results[] | select(.severity=="LOW")'
-            fi
-            '''
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                    kubectl apply -f k8s-deployment.yaml
+                    kubectl apply -f k8s-service.yaml
+                    kubectl rollout status deployment/${APP_NAME}
+                    kubectl get pods
+                    """
+                }
+            }
         }
     }
-}
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs!'
+stage('Terraform Security Check') {
+    steps {
+        dir('terraform-sample') {  // Replace with your Terraform folder
+            echo "Initializing Terraform..."
+            sh 'terraform init'
+
+            echo "Validating Terraform configuration..."
+            sh 'terraform validate'
+
+            echo "Running tfsec security scan..."
+            sh '/usr/local/bin/tfsec --severity CRITICAL,HIGH --no-color || exit 1'
+
+            echo "Documenting Terraform security scan results..."
+            sh '''
+            mkdir -p security-docs
+            echo "tfsec scan executed on $(date)" > security-docs/terraform-security-report.txt
+            /usr/local/bin/tfsec --format json >> security-docs/terraform-security-report.txt || true
+            '''
+        }
     }
 }
